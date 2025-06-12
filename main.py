@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import os
 
 # Import the router but don't initialize the agent yet
 from api.routes import api_router_factory
@@ -20,4 +21,7 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    # Get port from environment variable (Render provides PORT)
+    port = int(os.environ.get("PORT", 8000))
+    # Bind to 0.0.0.0 instead of localhost for external access
+    uvicorn.run(app, host="0.0.0.0", port=port)
