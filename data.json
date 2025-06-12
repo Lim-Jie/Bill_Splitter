@@ -1,0 +1,151 @@
+{
+  "bill_id": "BILL20250606-001",
+  "name": "Italian Bistro @Hartamas",
+  "date": "2025-06-05",
+  "time": "14:01",
+  "category": "Dining",
+  "tax_rate": 0.06,
+  "service_charge_rate": 0.1,
+  "subtotal_amount": 88.0,
+  "tax_amount": 5.28,
+  "service_charge_amount": 8.8,
+  "nett_amount": 102.08,
+  "paid_by": "alice@example.com",
+  "items": [
+    {
+      "id": 1,
+      "name": "Pasta Carbonara",
+      "price": 18.0,
+      "tax_amount": 2.88,
+      "nett_price": 20.88,
+      "quantity": 1,
+      "consumed_by": []
+    },
+    {
+      "id": 2,
+      "name": "Margherita Pizza",
+      "price": 15.0,
+      "tax_amount": 2.4,
+      "nett_price": 17.4,
+      "quantity": 1,
+      "consumed_by": []
+    },
+    {
+      "id": 3,
+      "name": "Margherita Pizza",
+      "price": 15.0,
+      "tax_amount": 2.4,
+      "nett_price": 17.4,
+      "quantity": 1,
+      "consumed_by": []
+    },
+    {
+      "id": 4,
+      "name": "Wine Bottle",
+      "price": 40.0,
+      "tax_amount": 6.4,
+      "nett_price": 46.4,
+      "quantity": 1,
+      "consumed_by": []
+    }
+  ],
+  "split_method": "divide_based",
+  "participants": [
+    {
+      "email": "alice@gmail.com",
+      "total_paid": 35.839999999999996,
+      "items_paid": [
+        {
+          "id": 1,
+          "value": 6.26,
+          "percentage": 30.0,
+          "split_type": "percentage",
+          "original_price": 20.88
+        },
+        {
+          "id": 2,
+          "value": 10.44,
+          "percentage": 60.0,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 3,
+          "value": 5.22,
+          "percentage": 30.0,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 4,
+          "value": 13.92,
+          "percentage": 30.0,
+          "split_type": "percentage",
+          "original_price": 46.4
+        }
+      ]
+    },
+    {
+      "email": "lijiebiz@gmail.com",
+      "total_paid": 25.4,
+      "items_paid": [
+        {
+          "id": 1,
+          "value": 6.26,
+          "percentage": 30.0,
+          "split_type": "percentage",
+          "original_price": 20.88
+        },
+        {
+          "id": 3,
+          "value": 5.22,
+          "percentage": 30.0,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 4,
+          "value": 13.92,
+          "percentage": 30.0,
+          "split_type": "percentage",
+          "original_price": 46.4
+        }
+      ]
+    },
+    {
+      "email": "charlie@gmail.com",
+      "total_paid": 40.83,
+      "items_paid": [
+        {
+          "id": 1,
+          "value": 8.35,
+          "percentage": 40.0,
+          "split_type": "percentage",
+          "original_price": 20.88
+        },
+        {
+          "id": 2,
+          "value": 6.96,
+          "percentage": 40.0,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 3,
+          "value": 6.96,
+          "percentage": 40.0,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 4,
+          "value": 18.56,
+          "percentage": 40.0,
+          "split_type": "percentage",
+          "original_price": 46.4
+        }
+      ]
+    }
+  ],
+  "notes": "Includes 10% service charge and 6% GST. Consumers to be assigned."
+}
