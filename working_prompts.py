@@ -38,6 +38,12 @@
 #Divide the bill with 2 ppl only to specific users only
 "Can you divide the bill 2 ways to alice and charlie"
 
+#[CANNOT WORK]
+#Move all items from one person to another
+"Can you move all items from alice to lijie"
+
+
+
 # if its already 'divide_based" and moving item over, make sure that the values including percentage are added when moving items
 
 
