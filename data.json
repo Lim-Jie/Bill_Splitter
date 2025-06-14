@@ -10,7 +10,7 @@
   "tax_amount": 5.28,
   "service_charge_amount": 8.8,
   "nett_amount": 102.08,
-  "paid_by": "alice@example.com",
+  "paid_by": "alice@gmail.com",
   "items": [
     {
       "id": 1,
