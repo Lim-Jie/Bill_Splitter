@@ -1,6 +1,6 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import  HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 import os
 import json
 import google.generativeai as genai
@@ -13,12 +13,12 @@ from difflib import get_close_matches
 from LLM_Context import system_message
 
 # Load environment variables
-load_dotenv()
+load_dotenv('.env.local')
 
 # Configuration - fallback removed for security
-API_KEY = os.getenv("GOOGLE_API_KEY")
-if not API_KEY:
-    raise ValueError("GOOGLE_API_KEY environment variable is required")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY environment variable is required")
 
 DATA_FILE = "data.json"
 
@@ -109,7 +109,7 @@ agent_executor = None
 def initialize_bill_agent():
     global agent_executor, data
     
-    genai.configure(api_key=API_KEY)
+    genai.configure(api_key=GEMINI_API_KEY)
     data = load_data()
     
     @tool("display_items")
@@ -238,7 +238,7 @@ def initialize_bill_agent():
     
     model = ChatGoogleGenerativeAI(
         model="gemini-1.5-flash",
-        google_api_key=API_KEY,
+        google_api_key=GEMINI_API_KEY,
         temperature=0.2
     )
     

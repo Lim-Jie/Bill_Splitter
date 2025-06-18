@@ -6,3 +6,5 @@ langchain-google-genai
 google-generativeai
 python-multipart
 python-dotenv
+google-cloud-vision
+pillow

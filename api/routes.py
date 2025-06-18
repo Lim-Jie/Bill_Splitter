@@ -1,20 +1,24 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, File, UploadFile
 from pydantic import BaseModel
 from typing import List, Optional
 import sys
 import os
-
-# Add the parent directory to the path to import from app.py
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Import what we can from the existing app.py
 import app
+import json
 from app import (
     load_data,
     save_data,
     find_closest_email,
     parse_percentage_string,
 )
+from receipt_cv import (
+    extract_text_from_image,
+    generate_structured_output,
+    process_item_surcharges,
+)
+
+# Add the parent directory to the path to import from app.py
+# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Define Pydantic models for API requests/responses
 class ChatRequest(BaseModel):
@@ -233,5 +237,39 @@ def api_router_factory():
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+        
+        
+    @api_router.post("/analyze-receipt")
+    async def analyze_receipt(file: UploadFile = File(...)):
+        if not file:
+            raise HTTPException(status_code=400, detail="No file uploaded")
+
+        image_bytes = await file.read()
+
+        try:
+            ocr_text = extract_text_from_image(image_bytes)
+            structured_output_text = generate_structured_output(ocr_text)
+            structured_output = json.loads(structured_output_text)
+            structured_output = process_item_surcharges(structured_output)
+
+            print("structured_output_text", structured_output_text)
+            print(json.dumps(structured_output, indent=2))
+
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=500, 
+                detail={
+                    "raw_text": ocr_text,
+                    "error": f"Invalid JSON from Gemini: {str(e)}",
+                    "structured_data_raw": structured_output_text
+                }
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+        return {
+            "raw_text": ocr_text,
+            "structured_data": structured_output
+        }
     
     return api_router
