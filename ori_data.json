@@ -4,13 +4,13 @@
   "date": "2025-06-05",
   "time": "14:01",
   "category": "Dining",
-  "tax_rate":0.06,
-  "service_charge_rate":0.1,
+  "tax_rate": 0.06,
+  "service_charge_rate": 0.1,
   "subtotal_amount": 88.0,
   "tax_amount": 5.28,
   "service_charge_amount": 8.8,
   "nett_amount": 102.08,
-  "paid_by": "alice@example.com",
+  "paid_by": "alice@gmail.com",
   "items": [
     {
       "id": 1,
@@ -26,16 +26,16 @@
       "name": "Margherita Pizza",
       "price": 15.0,
       "tax_amount": 2.4,
-      "nett_price": 17.40,
+      "nett_price": 17.4,
       "quantity": 1,
       "consumed_by": []
     },
-        {
+    {
       "id": 3,
       "name": "Margherita Pizza",
       "price": 15.0,
       "tax_amount": 2.4,
-      "nett_price": 17.40,
+      "nett_price": 17.4,
       "quantity": 1,
       "consumed_by": []
     },
@@ -44,32 +44,114 @@
       "name": "Wine Bottle",
       "price": 40.0,
       "tax_amount": 6.4,
-      "nett_price": 46.40,
+      "nett_price": 46.4,
       "quantity": 1,
       "consumed_by": []
     }
   ],
-  "split_method": "item_based",
+  "split_method": "divide_based",
   "participants": [
     {
       "email": "alice@gmail.com",
-      "total_paid": 102.08,
+      "total_paid": 34.03,
       "items_paid": [
-        { "id": 1, "percentage": 100, "value":20.88 },
-        { "id": 2, "percentage": 100, "value":17.40 },
-        { "id": 3, "percentage": 100, "value":17.40 },
-        { "id": 4, "percentage": 100, "value":46.40 }
+        {
+          "id": 1,
+          "value": 6.96,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 20.88
+        },
+        {
+          "id": 2,
+          "value": 5.8,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 3,
+          "value": 5.8,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 4,
+          "value": 15.47,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 46.4
+        }
       ]
     },
     {
       "email": "lijiebiz@gmail.com",
-       "total_paid": 0,
-      "items_paid": []
+      "total_paid": 34.03,
+      "items_paid": [
+        {
+          "id": 1,
+          "value": 6.96,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 20.88
+        },
+        {
+          "id": 2,
+          "value": 5.8,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 3,
+          "value": 5.8,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 4,
+          "value": 15.47,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 46.4
+        }
+      ]
     },
     {
       "email": "charlie@gmail.com",
-      "total_paid": 0,
-      "items_paid": []
+      "total_paid": 34.03,
+      "items_paid": [
+        {
+          "id": 1,
+          "value": 6.96,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 20.88
+        },
+        {
+          "id": 2,
+          "value": 5.8,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 3,
+          "value": 5.8,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 17.4
+        },
+        {
+          "id": 4,
+          "value": 15.47,
+          "percentage": 33.333333333333336,
+          "split_type": "percentage",
+          "original_price": 46.4
+        }
+      ]
     }
   ],
   "notes": "Includes 10% service charge and 6% GST. Consumers to be assigned."

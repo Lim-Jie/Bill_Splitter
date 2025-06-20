@@ -1,28 +1,19 @@
-from fastapi import APIRouter, HTTPException, File, UploadFile
+from fastapi import APIRouter, HTTPException, File, UploadFile, Form
 from pydantic import BaseModel
 from typing import List, Optional
-import sys
-import os
-import app
 import json
-from app import (
-    load_data,
-    save_data,
-    find_closest_email,
-    parse_percentage_string,
-)
+import app
 from receipt_cv import (
     extract_text_from_image,
     generate_structured_output,
     process_item_surcharges,
+    initialize_participants,
 )
-
-# Add the parent directory to the path to import from app.py
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Define Pydantic models for API requests/responses
 class ChatRequest(BaseModel):
     message: str
+    input: dict  # Required field for JSON structure
 
 class ChatResponse(BaseModel):
     response: str
@@ -33,70 +24,73 @@ class MoveItemRequest(BaseModel):
     source_email: str
     destination_email: str
     item_ids: List[int]
+    input: dict  # Required field for JSON structure
 
 class DivideItemsRequest(BaseModel):
     percentages: str  # Format: "email1:50%,email2:50%"
+    input: dict  # Required field for JSON structure
 
 class SplitEquallyRequest(BaseModel):
     num_ways: Optional[int] = 0
+    input: dict  # Required field for JSON structure
 
 def api_router_factory():
-    """Factory function to create the API router after agent initialization"""
-    # Make sure the agent is initialized
-    if app.agent_executor is None:
-        app.initialize_bill_agent()
-    
+    """Factory function to create the API router"""
     api_router = APIRouter()
 
     @api_router.post("/chat", response_model=ChatResponse)
     async def chat_with_agent(request: ChatRequest):
         """Main chat endpoint for interacting with the bill splitter"""
         try:
-            if app.agent_executor is None:
-                app.initialize_bill_agent()
+            if not request.input:
+                return ChatResponse(
+                    response="Error: 'input' field is required with the bill data structure.", 
+                    status="error",
+                    data=None
+                )
+            
+            # Initialize agent with the provided data
+            app.initialize_bill_agent(request.input)
             
             # Execute the agent command
             result = app.agent_executor.invoke({"input": request.message})
             
-            # Load the updated data after the operation
-            updated_data = load_data()
+            # Get the updated data from memory
+            updated_data = app.get_current_data()
             
             return ChatResponse(
                 response=result["output"], 
                 status="success",
-                data=updated_data  # Include the current JSON data structure
+                data=updated_data
             )
             
         except Exception as e:
-            # Even on error, try to return current data state
-            try:
-                current_data = load_data()
-                return ChatResponse(
-                    response=f"Error processing request: {str(e)}", 
-                    status="error",
-                    data=current_data
-                )
-            except:
-                return ChatResponse(
-                    response=f"Error processing request: {str(e)}", 
-                    status="error",
-                    data=None
-                )
+            return ChatResponse(
+                response=f"Error processing request: {str(e)}", 
+                status="error",
+                data=request.input if request.input else None
+            )
 
-    @api_router.get("/participants")
-    async def get_participants():
+    @api_router.post("/participants")
+    async def get_participants(request: dict):
         """Get all participants and their current balances"""
         try:
-            current_data = load_data()
+            if not request.get("input"):
+                raise HTTPException(status_code=400, detail="'input' field is required")
+            
+            current_data = request["input"]
             return {"participants": current_data["participants"]}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    @api_router.get("/items")
-    async def get_items():
+    @api_router.post("/items")
+    async def get_items(request: dict):
         """Get all items in the bill"""
         try:
-            current_data = load_data()
+            if not request.get("input"):
+                raise HTTPException(status_code=400, detail="'input' field is required")
+            
+            current_data = request["input"]
             return {"items": current_data["items"]}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -105,14 +99,18 @@ def api_router_factory():
     async def move_item_endpoint(request: MoveItemRequest):
         """Move items between participants"""
         try:
-            current_data = load_data()
-            actual_source = find_closest_email(request.source_email, current_data["participants"])
-            actual_dest = find_closest_email(request.destination_email, current_data["participants"])
+            if not request.input:
+                raise HTTPException(status_code=400, detail="'input' field is required")
+            
+            app.set_current_data(request.input)
+            current_data = app.get_current_data()
+            
+            actual_source = app.find_closest_email(request.source_email, current_data["participants"])
+            actual_dest = app.find_closest_email(request.destination_email, current_data["participants"])
 
             if not actual_source or not actual_dest:
                 raise HTTPException(status_code=400, detail="Could not find matching email addresses")
 
-            # Since we can't import the tool directly, we'll recreate the logic
             source_participant = next(p for p in current_data["participants"] if p["email"] == actual_source)
             dest_participant = next(p for p in current_data["participants"] if p["email"] == actual_dest)
 
@@ -133,12 +131,12 @@ def api_router_factory():
             source_participant["total_paid"] -= total_value_moved
             dest_participant["total_paid"] += total_value_moved
 
-            save_data(current_data)
+            app.update_current_data(current_data)
 
             return {
                 "message": f"Successfully moved items {request.item_ids} from {actual_source} to {actual_dest}",
                 "status": "success",
-                "data": current_data  # Include updated data
+                "data": app.get_current_data()
             }
 
         except Exception as e:
@@ -148,7 +146,12 @@ def api_router_factory():
     async def split_equally_endpoint(request: SplitEquallyRequest):
         """Split the bill equally among participants"""
         try:
-            current_data = load_data()
+            if not request.input:
+                raise HTTPException(status_code=400, detail="'input' field is required")
+            
+            app.set_current_data(request.input)
+            current_data = app.get_current_data()
+            
             participants = current_data["participants"]
             num_ways = request.num_ways if request.num_ways > 0 else len(participants)
             
@@ -164,7 +167,8 @@ def api_router_factory():
             percentage_str = ",".join(f"{email}:{percent}%" for email, percent in percentages.items())
             
             # Call the divide items logic
-            return await divide_items_endpoint(DivideItemsRequest(percentages=percentage_str))
+            divide_request = DivideItemsRequest(percentages=percentage_str, input=request.input)
+            return await divide_items_endpoint(divide_request)
             
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -173,8 +177,13 @@ def api_router_factory():
     async def divide_items_endpoint(request: DivideItemsRequest):
         """Divide items among participants based on percentage distribution"""
         try:
-            current_data = load_data()
-            percentage_dict = parse_percentage_string(request.percentages)
+            if not request.input:
+                raise HTTPException(status_code=400, detail="'input' field is required")
+            
+            app.set_current_data(request.input)
+            current_data = app.get_current_data()
+            
+            percentage_dict = app.parse_percentage_string(request.percentages)
             
             if abs(sum(percentage_dict.values()) - 100) > 0.01:
                 raise HTTPException(status_code=400, detail="Percentages must sum to 100%")
@@ -199,22 +208,25 @@ def api_router_factory():
                     participant["total_paid"] += share["value"]
             
             current_data["split_method"] = "divide_based"
-            save_data(current_data)
+            app.update_current_data(current_data)
             
             return {
                 "message": "Bill divided successfully", 
                 "status": "success",
-                "data": current_data  # Include updated data
+                "data": app.get_current_data()
             }
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    @api_router.get("/bill-summary")
-    async def get_bill_summary():
+    @api_router.post("/bill-summary")
+    async def get_bill_summary(request: dict):
         """Get a complete summary of the current bill state"""
         try:
-            current_data = load_data()
+            if not request.get("input"):
+                raise HTTPException(status_code=400, detail="'input' field is required")
+            
+            current_data = request["input"]
             
             # Get items
             items = [f"{item['name']} (x{item['quantity']}): ${item['price']}" for item in current_data["items"]]
@@ -238,12 +250,19 @@ def api_router_factory():
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
         
-        
     @api_router.post("/analyze-receipt")
-    async def analyze_receipt(file: UploadFile = File(...)):
-        if not file:
-            raise HTTPException(status_code=400, detail="No file uploaded")
-
+    async def analyze_receipt(file: UploadFile = File(...), participants: str = Form(...)):
+        # Parse the JSON string
+        participants_list = json.loads(participants)
+        
+        # Validate participants format
+        for participant in participants_list:
+            if not isinstance(participant, dict) or "name" not in participant or "email" not in participant:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Each participant must be an object with 'name' and 'email' fields"
+                )
+        
         image_bytes = await file.read()
 
         try:
@@ -251,7 +270,10 @@ def api_router_factory():
             structured_output_text = generate_structured_output(ocr_text)
             structured_output = json.loads(structured_output_text)
             structured_output = process_item_surcharges(structured_output)
-
+            
+            # Pass participants_list to initialize_participants
+            structured_output = initialize_participants(structured_output, participants_list)
+            
             print("structured_output_text", structured_output_text)
             print(json.dumps(structured_output, indent=2))
 

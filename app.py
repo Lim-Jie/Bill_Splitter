@@ -1,4 +1,4 @@
-from fastapi import  HTTPException
+from fastapi import HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Optional
 import os
@@ -20,11 +20,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY environment variable is required")
 
-DATA_FILE = "data.json"
-
 # Pydantic models for request/response
 class ChatRequest(BaseModel):
     message: str
+    input: dict  # Required field to receive JSON structure
 
 class ChatResponse(BaseModel):
     response: str
@@ -41,29 +40,26 @@ class DivideItemsRequest(BaseModel):
 class SplitEquallyRequest(BaseModel):
     num_ways: Optional[int] = 0
 
-# Global data variable
-data = {}
+# Global data variable - this is now the only source of truth
+current_data = {}
 
-def load_data():
-    """Load data from JSON file with error handling."""
-    try:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        file_path = os.path.join(current_dir, DATA_FILE)
-        
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"File not found: {file_path}")
-        
-        with open(file_path, "r") as f:
-            return json.load(f)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error loading data: {str(e)}")
+def get_current_data():
+    """Get the current data stored in memory."""
+    if not current_data:
+        raise HTTPException(status_code=400, detail="No data provided. Please include 'input' field in your request.")
+    return current_data
 
-def save_data(data_to_save):
-    try:
-        with open(DATA_FILE, "w") as f:
-            json.dump(data_to_save, f, indent=2)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error saving data: {str(e)}")
+def set_current_data(input_data):
+    """Set the current data from API input."""
+    global current_data
+    if not input_data:
+        raise HTTPException(status_code=400, detail="Input data cannot be empty.")
+    current_data = input_data.copy()  # Make a copy to avoid reference issues
+
+def update_current_data(updated_data):
+    """Update the current data in memory."""
+    global current_data
+    current_data = updated_data
 
 def find_closest_email(email: str, participants: List[Dict]) -> str:
     valid_emails = [p["email"] for p in participants]
@@ -106,21 +102,29 @@ def parse_percentage_string(percentage_str: str) -> Dict[str, float]:
 # Initialize agent once
 agent_executor = None
 
-def initialize_bill_agent():
-    global agent_executor, data
+def initialize_bill_agent(input_data):
+    """Initialize the bill agent with the provided data."""
+    global agent_executor
+    
+    if not input_data:
+        raise HTTPException(status_code=400, detail="Input data is required to initialize the agent.")
     
     genai.configure(api_key=GEMINI_API_KEY)
-    data = load_data()
+    
+    # Set the current data
+    set_current_data(input_data)
     
     @tool("display_items")
     def display_items_tools():
         """List all items in the bill."""
-        return [f"{item['name']} (x{item['quantity']}): ${item['price']}" for item in data["items"]]
+        data = get_current_data()
+        return [f"{item['name']} (x{item['quantity']}): ${item['nett_price']}" for item in data["items"]]
 
     @tool("move_item")
     def move_item_tool(source_email: str, destination_email: str, item_ids: List[int]) -> str:
         """Move items from one participant to another and update balances."""
         try:
+            data = get_current_data()
             actual_source = find_closest_email(source_email, data["participants"])
             actual_dest = find_closest_email(destination_email, data["participants"])
 
@@ -160,7 +164,8 @@ def initialize_bill_agent():
             source_participant["total_paid"] -= total_value_moved
             dest_participant["total_paid"] += total_value_moved
 
-            save_data(data)
+            # Update the current data
+            update_current_data(data)
 
             return (f"Successfully moved items {item_ids} from {actual_source} to {actual_dest}. "
                     f"Updated balances - {actual_source}: ${source_participant['total_paid']:.2f}, "
@@ -173,6 +178,7 @@ def initialize_bill_agent():
     def divide_items_tools(percentages: str) -> str:
         """Divide items among participants based on percentage distribution."""
         try:
+            data = get_current_data()
             percentage_dict = parse_percentage_string(percentages)
             
             if abs(sum(percentage_dict.values()) - 100) > 0.01:
@@ -198,7 +204,7 @@ def initialize_bill_agent():
                     participant["total_paid"] += share["value"]
             
             data["split_method"] = "divide_based"
-            save_data(data)
+            update_current_data(data)
             
             result = "Bill divided by percentages:\n"
             for p in data["participants"]:
@@ -215,6 +221,7 @@ def initialize_bill_agent():
     def split_equally_tool(num_ways: int = 0) -> str:
         """Split the bill equally among the specified number of participants."""
         try:
+            data = get_current_data()
             participants = data["participants"]
             if num_ways == 0:
                 num_ways = len(participants)
@@ -242,7 +249,7 @@ def initialize_bill_agent():
         temperature=0.2
     )
     
-    participants_context = format_participant_context(data["participants"])
+    participants_context = format_participant_context(current_data["participants"])
     combined_context = f"{system_message}\n{participants_context}"
     
     # Create prompt template for newer langchain version

@@ -101,25 +101,6 @@ Return the data in EXACTLY this JSON format:
     }
   ],
   "split_method": "item_based",
-  "participants": [
-    {
-      "email": "alice@example.com",
-      "total_paid": 0.00,
-      "items_paid": [
-        { "id": 1, "percentage": 100, "value": 0.00 }
-      ]
-    },
-    {
-      "email": "lijiebiz@gmail.com",
-      "total_paid": 0,
-      "items_paid": []
-    },
-    {
-      "email": "charlie@gmail.com",
-      "total_paid": 0,
-      "items_paid": []
-    }
-  ],
   "notes": "Brief description of any special charges or notes"
 }
 
@@ -177,5 +158,44 @@ def process_item_surcharges(structured_output):
         
         # Calculate nett_price as price + tax_amount
         item['nett_price'] = round(item_price + item['tax_amount'], 2)
+    
+    return structured_output
+
+def initialize_participants(structured_output, participants_list):
+    """Initialize participants with the provided participant data"""
+    
+    # Create participants structure
+    participants = []
+    
+    for i, participant in enumerate(participants_list):
+        if i == 0:  # First participant gets all items
+            items_paid = []
+            total_paid = 0.0
+            
+            # Assign all items to first participant with 100% responsibility
+            for item in structured_output.get("items", []):
+                item_payment = {
+                    "id": item["id"],
+                    "percentage": 100,
+                    "value": item["nett_price"]
+                }
+                items_paid.append(item_payment)
+                total_paid += item["nett_price"]
+            
+            participants.append({
+                "email": participant["email"],
+                "total_paid": total_paid,
+                "items_paid": items_paid
+            })
+        else:  # Other participants get empty items
+            participants.append({
+                "email": participant["email"],
+                "total_paid": 0.0,
+                "items_paid": []
+            })
+    
+    # Add participants to structured output
+    structured_output["participants"] = participants
+    structured_output["split_method"] = "not_set"
     
     return structured_output
