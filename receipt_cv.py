@@ -72,8 +72,7 @@ Given the raw receipt text below, extract and format the data according to these
     
 6. Extract all items with details
 7. Set "split_method" to "item_based"
-8. Create a default participant using the first email found (or "alice@example.com" if none)
-9. Assign all items to the first participant initially
+8. Assign all items to the first participant initially
 
 Return the data in EXACTLY this JSON format:
 {
@@ -88,7 +87,7 @@ Return the data in EXACTLY this JSON format:
   "tax_amount": 0.00,
   "service_charge_amount": 0.00,
   "nett_amount": 0.00,
-  "paid_by": "alice@example.com",
+  "paid_by": "",
   "items": [
     {
       "id": 1,
@@ -161,7 +160,7 @@ def process_item_surcharges(structured_output):
     
     return structured_output
 
-def initialize_participants(structured_output, participants_list):
+def initialize_participants(structured_output, participants_list, email):
     """Initialize participants with the provided participant data"""
     
     # Create participants structure
@@ -193,6 +192,12 @@ def initialize_participants(structured_output, participants_list):
                 "total_paid": 0.0,
                 "items_paid": []
             })
+    if email:
+        print("Email: ", email , "found")
+        print("paid_by has been revised to: ", email)
+        structured_output["paid_by"]=str(email)
+    else:
+         structured_output["paid_by"]="you@example.com"
     
     # Add participants to structured output
     structured_output["participants"] = participants

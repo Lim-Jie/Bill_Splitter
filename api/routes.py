@@ -251,7 +251,7 @@ def api_router_factory():
             raise HTTPException(status_code=500, detail=str(e))
         
     @api_router.post("/analyze-receipt")
-    async def analyze_receipt(file: UploadFile = File(...), participants: str = Form(...)):
+    async def analyze_receipt(file: UploadFile = File(...), participants: str = Form(...), email: Optional[str] = Form(None)):
         # Parse the JSON string
         participants_list = json.loads(participants)
         
@@ -272,7 +272,8 @@ def api_router_factory():
             structured_output = process_item_surcharges(structured_output)
             
             # Pass participants_list to initialize_participants
-            structured_output = initialize_participants(structured_output, participants_list)
+            structured_output = initialize_participants(structured_output, participants_list, email)
+            
             
             print("structured_output_text", structured_output_text)
             print(json.dumps(structured_output, indent=2))
