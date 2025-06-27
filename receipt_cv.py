@@ -69,6 +69,8 @@ Given the raw receipt text below, extract and format the data according to these
        - service_charge_amount = Y.YY
        - tax_rate =  0.06 
        - tax_amount = X.XX
+ If you see "ROUNDING ADJ" or anything equivalent with amount X.XX, then:
+       - rounding_adj = "X.XX" 
     
 6. Extract all items with details
 7. Set "split_method" to "item_based"
@@ -87,6 +89,7 @@ Return the data in EXACTLY this JSON format:
   "tax_amount": 0.00,
   "service_charge_amount": 0.00,
   "nett_amount": 0.00,
+  "rounding_adj": 0.00,
   "paid_by": "",
   "items": [
     {
@@ -141,7 +144,25 @@ def process_item_surcharges(structured_output):
     # Extract rates, handling None values
     service_charge_rate = structured_output.get('service_charge_rate') or 0
     tax_rate = structured_output.get('tax_rate') or 0
+    service_charge_amount = structured_output.get('service_charge_amount')
+    tax_rate_amount = structured_output.get('tax_rate_amount')
     
+    
+    if ((service_charge_rate == 0) and (service_charge_amount != 0)):
+        subtotal = structured_output.get('subtotal_amount', 0)
+        if subtotal > 0:
+            structured_output['service_charge_rate'] = round(service_charge_amount/subtotal, 4)
+            service_charge_rate = structured_output['service_charge_rate']
+            print("Tax rate found but no tax amount... correcting from " + str(service_charge_rate) + " to " + str(structured_output['service_charge_rate']))
+            
+    elif ((tax_rate == 0) and (tax_rate_amount !=0)):
+        subtotal = structured_output.get('subtotal_amount', 0)
+        if subtotal > 0:
+            structured_output['tax_rate'] = round(structured_output.get('tax_amount')/subtotal, 4)
+            tax_rate = structured_output['tax_rate']
+            print("Tax rate found but no tax amount... correcting from " + str(tax_rate) + " to " + str(structured_output['tax_rate']))
+
+        
     # Calculate total surcharge rate
     total_surcharge_rate = service_charge_rate + tax_rate
     

@@ -266,9 +266,13 @@ def api_router_factory():
         image_bytes = await file.read()
 
         try:
+            # Extract text from image via OCR, create JSON structure, parse string structure to JSON object
             ocr_text = extract_text_from_image(image_bytes)
             structured_output_text = generate_structured_output(ocr_text)
             structured_output = json.loads(structured_output_text)
+            
+            
+            # Calculate total surcharge rate and apply it to each item
             structured_output = process_item_surcharges(structured_output)
             
             # Pass participants_list to initialize_participants
