@@ -75,7 +75,7 @@ Given the raw receipt text below, extract and format the data according to these
 6. Extract all items with details
 7. Set "split_method" to "item_based"
 8. Assign all items to the first participant initially
-
+9. After all has been done, rate the confidence score of the information extracted. It can incude how blur, covered/shadow, unproper lighting, poor contrast of the image, which affect the generated output.
 Return the data in EXACTLY this JSON format:
 {
   "bill_id": "BILL20250606-001",
@@ -103,7 +103,8 @@ Return the data in EXACTLY this JSON format:
     }
   ],
   "split_method": "item_based",
-  "notes": "Brief description of any special charges or notes"
+  "notes": "Brief description of any special charges or notes",
+  "confidence_score":0.0
 }
 
 Raw text:
@@ -200,11 +201,11 @@ def initialize_participants(structured_output, participants_list, email):
                     "value": item["nett_price"]
                 }
                 items_paid.append(item_payment)
-                total_paid += item["nett_price"]
+                total_paid += (item["nett_price"] * item["quantity"])
             
             participants.append({
                 "email": participant["email"],
-                "total_paid": total_paid,
+                "total_paid": round(total_paid, 2),  # Round to 2 decimal places
                 "items_paid": items_paid
             })
         else:  # Other participants get empty items
@@ -213,6 +214,7 @@ def initialize_participants(structured_output, participants_list, email):
                 "total_paid": 0.0,
                 "items_paid": []
             })
+    
     if email:
         print("Email: ", email , "found")
         print("paid_by has been revised to: ", email)
@@ -223,5 +225,55 @@ def initialize_participants(structured_output, participants_list, email):
     # Add participants to structured output
     structured_output["participants"] = participants
     structured_output["split_method"] = "not_set"
+    
+    return structured_output
+
+def evaluate_and_adjust_bill(structured_output):
+    """
+    Evaluate if the bill is correctly split and adjust the first item if needed
+    """
+    items = structured_output.get("items", [])
+    if not items:
+        return structured_output
+    
+    # Calculate total nett price from items
+    items_nett_price = sum(item["nett_price"] * item["quantity"] for item in items)
+    
+    # Get the actual nett amount from the bill
+    nett_amount = structured_output.get("nett_amount", 0)
+    rounding_adj = structured_output.get("rounding_adj", 0)
+    
+    # Calculate error difference (difference between items total and nett_amount)
+    error_diff = nett_amount - (rounding_adj + items_nett_price)
+    
+    # Get the first item
+    first_item = items[0]
+    
+    # Add rounding_adj to first item's nett_price if it exists
+    if rounding_adj != 0:
+        first_item["nett_price"] = round(first_item["nett_price"] + rounding_adj, 2)
+        first_item["rounding_adj"] = rounding_adj
+        print(f"Added rounding_adj: {rounding_adj} to first item")
+    
+    # Add error_diff to first item's nett_price and add attribute if it exists
+    if error_diff != 0:
+        first_item["nett_price"] = round(first_item["nett_price"] + error_diff, 2)
+        first_item["error_diff"] = round(error_diff, 2)
+        print(f"Added error_diff: {error_diff} to first item")
+    
+    # Recalculate items_nett_price for verification
+    final_items_nett_price = sum(item["nett_price"] * item["quantity"] for item in items)
+    
+    if abs(final_items_nett_price - nett_amount) < 0.01:
+        print("THE BILL IS CORRECTLY SPLIT")
+        print(f"Final items_nett_price: {final_items_nett_price}")
+        print(f"Bill nett_amount: {nett_amount}")
+    else:
+        print("THE BILL IS NOT CORRECTLY SPLIT")
+        print(f"Final items_nett_price: {final_items_nett_price}")
+        print(f"Bill nett_amount: {nett_amount}")
+        print(f"Remaining difference: {nett_amount - final_items_nett_price}")
+    
+    print(f"Adjusted first item nett_price to: {first_item['nett_price']}")
     
     return structured_output

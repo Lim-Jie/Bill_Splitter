@@ -8,6 +8,7 @@ from receipt_cv import (
     generate_structured_output,
     process_item_surcharges,
     initialize_participants,
+    evaluate_and_adjust_bill
 )
 
 # Define Pydantic models for API requests/responses
@@ -58,17 +59,22 @@ def api_router_factory():
             # Get the updated data from memory
             updated_data = app.get_current_data()
             
+            # Evaluate the splitting and assign the buffer randomly
+            difference = app.evaluate_chat_splitting(updated_data)
+            
             return ChatResponse(
                 response=result["output"], 
                 status="success",
-                data=updated_data
+                data=updated_data,
+                difference=difference,
             )
             
         except Exception as e:
             return ChatResponse(
                 response=f"Error processing request: {str(e)}", 
                 status="error",
-                data=request.input if request.input else None
+                data=request.input if request.input else None,
+                difference=0
             )
 
     @api_router.post("/participants")
@@ -275,9 +281,11 @@ def api_router_factory():
             # Calculate total surcharge rate and apply it to each item
             structured_output = process_item_surcharges(structured_output)
             
+            #Evaluate whether the items_nett price equals to the nett_amount of the bill
+            structured_output = evaluate_and_adjust_bill(structured_output)
+
             # Pass participants_list to initialize_participants
             structured_output = initialize_participants(structured_output, participants_list, email)
-            
             
             print("structured_output_text", structured_output_text)
             print(json.dumps(structured_output, indent=2))

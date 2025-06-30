@@ -98,6 +98,77 @@ def parse_percentage_string(percentage_str: str) -> Dict[str, float]:
         return percentages
     except Exception as e:
         raise ValueError(f"Invalid percentage format. Expected format: 'email:XX%,email:YY%'. Error: {e}")
+    
+    
+def evaluate_chat_splitting(structured_output):
+    """
+    Evaluate if the chat splitting totals match the bill amount and adjust for rounding differences
+    """
+    participants_list = structured_output.get("participants", [])
+    
+    if not participants_list:
+        print("No participants found")
+        return 0
+    
+    total_sum = 0
+    
+    for i, participant in enumerate(participants_list):
+        participant_total = participant.get("total_paid", 0)
+        total_sum += participant_total
+        print(f"Participant {i+1} ({participant.get('email', 'unknown')}): ${participant_total}")
+        
+    nett_amount = structured_output.get("nett_amount", 0)
+    difference = round(total_sum - nett_amount, 2)
+    
+    print(f"SUM OF TOTAL ITEMS PAID: ${total_sum}")
+    print(f"TOTAL BILL: ${nett_amount}")
+    print(f"DIFFERENCE: ${difference}")
+    
+    if abs(difference) >= 0.01:  # If there's a significant difference (1 cent or more)
+        print(f"❌ THE BILL IS NOT CORRECTLY SPLIT - Adjusting by ${difference}")
+        
+        # Convert difference to cents for easier distribution
+        difference_cents = round(difference * 100)
+        num_participants = len(participants_list)
+        
+        if difference_cents != 0:
+            # Calculate how to distribute the difference
+            cents_per_participant = difference_cents // num_participants
+            remaining_cents = difference_cents % num_participants
+            
+            print(f"Distributing {difference_cents} cents among {num_participants} participants")
+            print(f"Each participant gets {cents_per_participant} cents, {remaining_cents} participants get 1 extra cent")
+            
+            # Adjust each participant's total_paid
+            for i, participant in enumerate(participants_list):
+                adjustment = cents_per_participant
+                
+                # Distribute remaining cents to first few participants
+                if i < remaining_cents:
+                    adjustment += 1
+                
+                # Convert cents back to dollars and subtract (since we're removing excess)
+                adjustment_dollars = -adjustment / 100.0
+                participant["total_paid"] = round(participant["total_paid"] + adjustment_dollars, 2)
+                
+                if adjustment != 0:
+                    print(f"Adjusted {participant.get('email', 'unknown')} by ${adjustment_dollars:.2f}")
+            
+            # Recalculate total to verify
+            new_total = sum(p.get("total_paid", 0) for p in participants_list)
+            new_difference = round(new_total - nett_amount, 2)
+            
+            if abs(new_difference) < 0.01:
+                print("✅ THE BILL IS NOW CORRECTLY SPLIT")
+                # Update the structured output with adjusted values
+                structured_output["participants"] = participants_list
+                return new_total
+            else:
+                print("❌ ADJUSTMENT FAILED - STILL NOT BALANCED")
+                return new_total
+    else:
+        print("✅ THE BILL IS CORRECTLY SPLIT")
+        return total_sum
 
 # Initialize agent once
 agent_executor = None
