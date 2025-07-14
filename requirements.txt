@@ -8,3 +8,5 @@ python-multipart
 python-dotenv
 google-cloud-vision
 pillow
+requests
+twilio

@@ -75,7 +75,8 @@ Given the raw receipt text below, extract and format the data according to these
 6. Extract all items with details
 7. Set "split_method" to "item_based"
 8. Assign all items to the first participant initially
-9. After all has been done, rate the confidence score of the information extracted. It can incude how blur, covered/shadow, unproper lighting, poor contrast of the image, which affect the generated output.
+9. Set the location name to the area (city name example : Kuala Lumpur), leave empty if none found. If address of the shop/lot number, list it under "address" variable else leave empty.
+10. After all has been done, rate the confidence score of the overall information extracted. It can incude how blur, covered/shadow, unproper lighting, poor contrast of the image, which affect the generated output. It should be written in notes
 Return the data in EXACTLY this JSON format:
 {
   "bill_id": "BILL20250606-001",
@@ -91,6 +92,8 @@ Return the data in EXACTLY this JSON format:
   "nett_amount": 0.00,
   "rounding_adj": 0.00,
   "paid_by": "",
+  "location_name": "",
+  "address": "",
   "items": [
     {
       "id": 1,
@@ -103,7 +106,7 @@ Return the data in EXACTLY this JSON format:
     }
   ],
   "split_method": "item_based",
-  "notes": "Brief description of any special charges or notes",
+  "notes": "Brief description of the confidence of scanning etc",
   "confidence_score":0.0
 }
 
@@ -260,6 +263,8 @@ def evaluate_and_adjust_bill(structured_output):
         first_item["nett_price"] = round(first_item["nett_price"] + error_diff, 2)
         first_item["error_diff"] = round(error_diff, 2)
         print(f"Added error_diff: {error_diff} to first item")
+        print(f"nett_amount ${nett_amount}")
+        print(f"rounding_adj + items_nett_price ${rounding_adj + items_nett_price}")
     
     # Recalculate items_nett_price for verification
     final_items_nett_price = sum(item["nett_price"] * item["quantity"] for item in items)
