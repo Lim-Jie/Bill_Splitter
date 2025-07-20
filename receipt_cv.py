@@ -185,11 +185,12 @@ def process_item_surcharges(structured_output):
     
     return structured_output
 
-def initialize_participants(structured_output, participants_list, email):
+def initialize_participants(structured_output, participants_list, phoneNumber):
     """Initialize participants with the provided participant data"""
     
     # Create participants structure
     participants = []
+    print("participants_list",participants_list)
     
     for i, participant in enumerate(participants_list):
         if i == 0:  # First participant gets all items
@@ -207,23 +208,26 @@ def initialize_participants(structured_output, participants_list, email):
                 total_paid += (item["nett_price"] * item["quantity"])
             
             participants.append({
-                "email": participant["email"],
+                "phone": participant["phone"],  # Uses phone
                 "total_paid": round(total_paid, 2),  # Round to 2 decimal places
-                "items_paid": items_paid
+                "items_paid": items_paid,
+                "name" : participant["name"],
+                "user_id" : participant["id"]
             })
         else:  # Other participants get empty items
             participants.append({
-                "email": participant["email"],
+                "phone": participant["phone"],
                 "total_paid": 0.0,
-                "items_paid": []
+                "items_paid": [],
+                 "name" : participant["name"],
+                "user_id" : participant["id"]
+
             })
     
-    if email:
-        print("Email: ", email , "found")
-        print("paid_by has been revised to: ", email)
-        structured_output["paid_by"]=str(email)
+    if phoneNumber:
+        structured_output["paid_by"] = str(phoneNumber)
     else:
-         structured_output["paid_by"]="you@example.com"
+        structured_output["paid_by"] = ""  # Or use a default phone number format
     
     # Add participants to structured output
     structured_output["participants"] = participants

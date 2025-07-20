@@ -22,13 +22,13 @@ class ChatResponse(BaseModel):
     data: Optional[dict] = None  # Add data field to include JSON structure
 
 class MoveItemRequest(BaseModel):
-    source_email: str
-    destination_email: str
+    source_phone: str  # Changed from source_email
+    destination_phone: str  # Changed from destination_email
     item_ids: List[int]
     input: dict  # Required field for JSON structure
 
 class DivideItemsRequest(BaseModel):
-    percentages: str  # Format: "email1:50%,email2:50%"
+    percentages: str  # Format: "phone1:50%,phone2:50%"  # Updated comment
     input: dict  # Required field for JSON structure
 
 class SplitEquallyRequest(BaseModel):
@@ -79,16 +79,20 @@ def api_router_factory():
 
         
     @api_router.post("/analyze-receipt")
-    async def analyze_receipt(file: UploadFile = File(...), participants: str = Form(...), email: Optional[str] = Form(None)):
+    async def analyze_receipt(file: UploadFile = File(...), participants: str = Form(...), phoneNumber: str = Form(None)):
         # Parse the JSON string
         participants_list = json.loads(participants)
-        
+        print("______________________________________________________________________")
+        print("phonenumber: ", phoneNumber)
+        print("participants", participants)
+        print("______________________________________________________________________")
+
         # Validate participants format
         for participant in participants_list:
-            if not isinstance(participant, dict) or "name" not in participant or "email" not in participant:
+            if not isinstance(participant, dict) or "name" not in participant or "phone" not in participant:
                 raise HTTPException(
                     status_code=400,
-                    detail="Each participant must be an object with 'name' and 'email' fields"
+                    detail="Each participant must be an object with 'name' and 'phone' fields"  # Fixed
                 )
         
         image_bytes = await file.read()
@@ -107,7 +111,7 @@ def api_router_factory():
             structured_output = evaluate_and_adjust_bill(structured_output)
 
             # Pass participants_list to initialize_participants
-            structured_output = initialize_participants(structured_output, participants_list, email)
+            structured_output = initialize_participants(structured_output, participants_list, phoneNumber)
             
             print("structured_output_text", structured_output_text)
             print(json.dumps(structured_output, indent=2))
